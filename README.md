@@ -91,8 +91,9 @@ vault write -field=signed_key ssh/sign/prodadmin \
 My target system is centos so the username is "centos"
 
 ```
-#Check out the signed key_typ
+#Check out the signed key
 ssh-keygen -Lf ~/.ssh/signed-cert.pub
+#SSH into the target system
 ssh -i signed-cert.pub -i ~/.ssh/id_rsa centos@target_host
 ```
 
