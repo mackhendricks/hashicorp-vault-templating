@@ -1,0 +1,9 @@
+# Configuration settings
+
+{{ with secret "secret/data/legacy-app" }}
+
+USERNAME="{{ .Data.data.username }}"
+PASSWORD="{{ .Data.data.password }}"
+FORCE_RESTART="{{ .Data.data.force_restart }}"
+
+{{ end }}

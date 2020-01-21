@@ -1,4 +1,4 @@
-# HashiCorp Detroit User Group Nov 2019
+# Vailt Templating Example
 
 ## Topic: SSH Secrets Management with Vault
 
