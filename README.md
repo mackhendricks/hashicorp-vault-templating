@@ -1,8 +1,6 @@
-# Vailt Templating Example
+# Vault Templating Example
 
-## Topic: SSH Secrets Management with Vault
-
-We will walk thru the steps to configure HashiCorp Vault as the mechanism to grant users with audited access to Linux systems via SSH.  This will prevent the insecure SSH key sprawl that many organizations deal with.
+The purpose of this example is to demonstrate how a legacy or COT's application would leverage Vault without being Vault aware
 
 ## Download and Install HashiCorp Vault
 
@@ -31,84 +29,55 @@ Execute the following command if on Linux or Mac OS
 
 ```
 . ./scripts/vault_env.sh
+
+# Test You Can Access vault
+vault status
 ```
 
-# Enable the SSH Secret Engine and setup Policies
+# Add Secrets to Vault
 
 ```
-vault secrets enable ssh
-vault policy write prodservers ./policies/prodservers.hcl
+vault kv put secret/legacy-app username=mack password=Has4KidsandBroke force_restart=no
 ```
 
-# Create a User
+# Create Policy
 
 ```
-vault auth enable userpass
-vault write auth/userpass/users/mack password="password" policies=prodservers
+vault policy write legacy-app-policy ./policies/legacy-app-policy.hcl
 ```
 
-
-# Generate a Key Pair for Target SSH Servers
-
+# Enable AppRole Auth Method and Create Approle
 ```
-vault write ssh/config/ca generate_signing_key=true
-vault write ssh/roles/prodadmin @./roles/prodadmin.json
+vault auth enable approle
+vault write auth/approle/role/legacy-app @roles/legacy-app.json
 ```
 
-
-# Enable Auditing
-
-Enable auditing to help you troubleshoot any issues.  Note, the audit file will be created for you
-
+# Get the Role ID from Newly Created Role
 ```
-vault audit enable file file_path=/tmp/vault_audit.log
+vault read auth/approle/role/legacy-app/role-id
 ```
 
-# Configure the Target Host SSH Server
+# Test the AppRole
+
+Test the AppRole before starting the Vault Agent.  You just want to make sure it works.  
 
 ```
-scp <-i [ssh key]> prodservers.pem root@target_host:/etc/ssh/prodservers.pem
-vi /etc/ssh/sshd_config
-#add this to the end of the file
-TrustedUserCAKeys /etc/ssh/prodservers.pem
-systemctl restart sshd
+# Login
+vault write auth/approle/login role_id=<role id from above>
+# You will be provided a token.  Use that token to get Secrets
+export VAULT_TOKEN=
+# Get the secrets
+vault kv get secret/legacy-app
 ```
 
-# Let's Login Vault as mack
-```
- vault login -method userpass username=mack
-```
+# Validate the Vault Agent is Working
 
-# Vault will sign my public key
+1.  Put the role id into this file: /tmp/vault-role_id
+2.  Change the path of the source and destination paths to reflect your path
 
 ```
-vault write -field=signed_key ssh/sign/prodadmin \
-    public_key=@$HOME/.ssh/id_rsa.pub > ~/.ssh/signed-cert.pub
-```
-
-# SSH into the Target Host
-
-My target system is centos so the username is "centos"
-
-```
-#Check out the signed key
-ssh-keygen -Lf ~/.ssh/signed-cert.pub
-#SSH into the target system
-ssh -i signed-cert.pub -i ~/.ssh/id_rsa centos@target_host
-```
-
-# Optional (Provision a SSH Target Host)
-
-Provision a SSH Target Host using Terraform.  I use Digital Ocean for my test environments.  So, these Terraform scripts are configured for them.
-
-## Provision Server
-
-```
-terraform init terraform/
-terraform apply -var do_token=$DIGITALOCEAN_TOKEN terraform/
-```
-
-## Destroy Server
-```
-terraform destroy
+# Start the Vault Agent
+vault agent -config=agent/config.hcl
+# Validate the Destination File was Created
+# Change the values of the secrets and see the Destination File be updated
 ```

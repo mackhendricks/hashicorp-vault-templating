@@ -2,7 +2,7 @@
   "token_ttl": "1m",
   "token_max_ttl": "3m",
   "token_policies": [
-    "default"
+    "legacy-app-policy"
   ],
   "period": 0,
   "bind_secret_id": false,
